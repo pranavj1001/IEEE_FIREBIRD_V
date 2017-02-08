@@ -206,6 +206,31 @@ void init_devices (void){
 	sei(); //Enables the global interrupts
 }
 
+//Function contains our alternate path which will be used in the case where obstacle is immovable
+//Note that this path is still in beta, therefore user caution is advised
+void addPath(){
+	updateLCD();
+	right();
+	_delay_ms(600);
+	updateLCD();
+	forward();
+	_delay_ms(1000);
+	updateLCD();
+	left();
+	_delay_ms(600);
+	updateLCD();
+	forward();
+	_delay_ms(2000);
+	updateLCD();
+	left();
+	_delay_ms(600);
+	updateLCD();
+	forward();
+	_delay_ms(1000);
+	updateLCD();
+	right();
+	_delay_ms(600);
+}
 
 //Main Function
 int main(){
@@ -214,23 +239,92 @@ int main(){
 	init_devices();
 	lcd_set_4bit();
 	lcd_init();
+
+	int delayTime;
+	int stopped = 0;
+	int runThisCode = 0;
+	int timerCount = 0;
+	int enteredLoopForAlternatePath = 1;
 		
 	while(1){//infinite while loop
 
-		updateLCD();//display distance related from the sharp sensor on the LCD
-	
+		velocity(248,255);
+		
+		updateLCD();
+		
 		forward(); //both wheels forward
-		_delay_ms(1000);
-
-		stop();						
-		_delay_ms(500);
-	
-		back(); //bpth wheels backward						
-		_delay_ms(1000);
-
-		stop();						
-		_delay_ms(500);
-		 
+		delayTime = 8;
+		for(int i = 0; i < delayTime*4; i++){
+			updateLCD();
+			if(value <= 200){
+				stop();
+				stopped = 1;
+				i--;
+				//buzzer_on();
+				runThisCode = 1;
+				while(runThisCode){
+					updateLCD();
+					if(value > 200){
+						runThisCode = 0;
+					}
+					timerCount++;
+					_delay_ms(250);
+					if(timerCount > 16){
+						addPath();
+						delayTime -= 4;
+						runThisCode = 0;						
+					}					
+				}
+			}else if(stopped || value > 200){
+				if(value > 200){
+					stopped = 0;
+					forward();
+					timerCount = 0;
+					//buzzer_off();
+				}
+				_delay_ms(250);
+			}
+		}
+		
+		right();
+		_delay_ms(600);
+		
+		delayTime = 4;
+		for(int i = 0; i < delayTime*4; i++){
+			updateLCD();
+			if(value <= 200){
+				stop();
+				stopped = 1;
+				i--;
+				//buzzer_on();
+				runThisCode = 1;
+				while(runThisCode){
+					updateLCD();
+					if(value > 200){
+						runThisCode = 0;
+					}
+					timerCount++;
+					_delay_ms(250);
+					if(timerCount > 16){
+						addPath();
+						delayTime -= 4;
+						runThisCode = 0;
+					}
+				}
+			}else if(stopped || value > 200){
+				if(value > 200){
+					stopped = 0;
+					forward();
+					timerCount = 0;
+					//buzzer_off();
+				}
+				_delay_ms(250);
+			}
+		}
+		
+		right();
+		_delay_ms(600);
+		
 	}
 }
 
