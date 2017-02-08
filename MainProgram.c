@@ -35,11 +35,18 @@ void adc_pin_config (void){
 	PORTK = 0x00; //set PORTK pins floating
 }
 
+//Function to configure Buzzer port
+void buzzer_pin_config (void){
+	DDRC = DDRC | 0x08;		//Setting PORTC 3 as output
+	PORTC = PORTC & 0xF7;		//Setting PORTC 3 logic low to turnoff buzzer
+}
+
 //Function to initialize ports
 void port_init(){
  	motion_pin_config();
 	lcd_port_config();
 	adc_pin_config();
+	buzzer_pin_config();
 }
 
 //Function to Initialize ADC
@@ -145,6 +152,22 @@ unsigned int Sharp_GP2D12_estimation(unsigned char adc_reading){
 		distanceInt=800;
 	}
 	return distanceInt;
+}
+
+//Function to switch on buzzer
+void buzzer_on (void){
+	unsigned char port_restore = 0;
+	port_restore = PINC;
+	port_restore = port_restore | 0x08;
+	PORTC = port_restore;
+}
+
+//Function to switch off buzzer
+void buzzer_off (void){
+	unsigned char port_restore = 0;
+	port_restore = PINC;
+	port_restore = port_restore & 0xF7;
+	PORTC = port_restore;
 }
 
 //Function to initialize the device
