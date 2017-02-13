@@ -266,15 +266,6 @@ void print_sensor(char row, char coloumn,unsigned char channel){
 	lcd_print(row, coloumn, ADC_Value, 3);
 }
 
-//Function to update LCD
-//LCD in this program will display the distance from the front SHARP sensor
-void updateLCD(){
-	sharp = ADC_Conversion(11);						//Stores the Analog value of front sharp connected to ADC channel 11 into variable "sharp"
-	value = Sharp_GP2D12_estimation(sharp);				//Stores Distance calsulated in a variable "value".
-	lcd_print(1,6,value,3);						//Prints Value Of Distanc in MM measured by Sharp Sensor.
-}
-
-
 // This Function calculates the actual distance in millimeters(mm) from the input
 // analog value of Sharp Sensor. 
 unsigned int Sharp_GP2D12_estimation(unsigned char adc_reading){
@@ -287,6 +278,14 @@ unsigned int Sharp_GP2D12_estimation(unsigned char adc_reading){
 		distanceInt=800;
 	}
 	return distanceInt;
+}
+
+//Function to update LCD
+//LCD in this program will display the distance from the front SHARP sensor
+void updateLCD(){
+	sharp = ADC_Conversion(11);						//Stores the Analog value of front sharp connected to ADC channel 11 into variable "sharp"
+	value = Sharp_GP2D12_estimation(sharp);				//Stores Distance calsulated in a variable "value".
+	lcd_print(1,6,value,3);						//Prints Value Of Distanc in MM measured by Sharp Sensor.
 }
 
 //Function to switch on buzzer
