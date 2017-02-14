@@ -1,3 +1,9 @@
+/*
+ * MainProgram.c
+ *
+ * Created: 02/02/2017 11:48:14 AM
+ *  Author: Pranav Jain
+ */
 #define F_CPU 14745600
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -343,27 +349,82 @@ void init_devices (void){
 //Function contains our alternate path which will be used in the case where obstacle is immovable
 //Note that this path is still in beta, therefore user caution is advised
 void addPath(){
+		
 	updateLCD();
+	
 	right();
-	_delay_ms(600);
+	_delay_ms(630);
 	updateLCD();
+	
 	forward();
-	_delay_ms(1000);
+	alternatePathDelaytTime = 2;
+	for(int i = 0; i < alternatePathDelaytTime*4; i++){
+		updateLCD();
+		runTheRobot(i, 1);
+	}
 	updateLCD();
+	
 	left();
-	_delay_ms(600);
+	_delay_ms(630);
 	updateLCD();
+	
 	forward();
-	_delay_ms(2000);
+	alternatePathDelaytTime = 2;
+	for(int i = 0; i < alternatePathDelaytTime*4; i++){
+		updateLCD();
+		runTheRobot(i, 1);
+	}
 	updateLCD();
+	
 	left();
-	_delay_ms(600);
+	_delay_ms(630);
 	updateLCD();
+	
 	forward();
-	_delay_ms(1000);
+	alternatePathDelaytTime = 2;
+	for(int i = 0; i < alternatePathDelaytTime*4; i++){
+		updateLCD();
+		runTheRobot(i, 1);
+	}
 	updateLCD();
+	
 	right();
-	_delay_ms(600);
+	_delay_ms(630);
+	updateLCD();
+	
+}
+
+void runTheRobot(int i, int insideAlternatePath){
+	if(value <= 200 && value >=1){
+				stop();
+				stopped = 1;
+				i--;
+				//buzzer_on();
+				runThisCode = 1;
+				while(runThisCode){
+					updateLCD();
+					if(value > 200){
+						runThisCode = 0;
+					}
+					_delay_ms(250);
+					if(!insideAlternatePath){
+						timerCount++;
+						if(timerCount > 16){
+							addPath();
+							delayTime -= 2;
+							runThisCode = 0;		
+						}
+					}										
+				}
+			}else if(stopped || value > 200 || value == 0){
+				if(value > 200 || value == 0){
+					stopped = 0;
+					forward();
+					timerCount = 0;
+					//buzzer_off();
+				}
+				_delay_ms(250);
+			}
 }
 
 //Main Function
@@ -373,90 +434,32 @@ int main(){
 	init_devices();
 	lcd_set_4bit();
 	lcd_init();
-
-	int delayTime;
-	int stopped = 0;
-	int runThisCode = 0;
-	int timerCount = 0;
-	int enteredLoopForAlternatePath = 1;
 		
 	while(1){//infinite while loop
-
-		velocity(248,255);
+		
+		//velocity adjust as the robot on which i was working had some problems with left wheel
+		velocity(255,251);
 		
 		updateLCD();
 		
 		forward(); //both wheels forward
-		delayTime = 8;
+		delayTime = 15;
 		for(int i = 0; i < delayTime*4; i++){
 			updateLCD();
-			if(value <= 200){
-				stop();
-				stopped = 1;
-				i--;
-				//buzzer_on();
-				runThisCode = 1;
-				while(runThisCode){
-					updateLCD();
-					if(value > 200){
-						runThisCode = 0;
-					}
-					timerCount++;
-					_delay_ms(250);
-					if(timerCount > 16){
-						addPath();
-						delayTime -= 4;
-						runThisCode = 0;						
-					}					
-				}
-			}else if(stopped || value > 200){
-				if(value > 200){
-					stopped = 0;
-					forward();
-					timerCount = 0;
-					//buzzer_off();
-				}
-				_delay_ms(250);
-			}
+			runTheRobot(i, 0);
 		}
 		
-		right_degrees(90);
+		right();
+		_delay_ms(630);
 		
-		delayTime = 4;
+		/*delayTime = 4;
 		for(int i = 0; i < delayTime*4; i++){
 			updateLCD();
-			if(value <= 200){
-				stop();
-				stopped = 1;
-				i--;
-				//buzzer_on();
-				runThisCode = 1;
-				while(runThisCode){
-					updateLCD();
-					if(value > 200){
-						runThisCode = 0;
-					}
-					timerCount++;
-					_delay_ms(250);
-					if(timerCount > 16){
-						addPath();
-						delayTime -= 4;
-						runThisCode = 0;
-					}
-				}
-			}else if(stopped || value > 200){
-				if(value > 200){
-					stopped = 0;
-					forward();
-					timerCount = 0;
-					//buzzer_off();
-				}
-				_delay_ms(250);
-			}
+			runTheRobot(i);
 		}
 		
-		right_degrees(90);
+		right();
+		_delay_ms(630);*/
 		
 	}
 }
-
