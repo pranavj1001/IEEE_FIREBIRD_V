@@ -3,7 +3,9 @@
  *
  * Created: 02/02/2017 11:48:14 AM
  *  Author: Pranav Jain
- */
+ */ 
+
+
 #define F_CPU 14745600
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -19,10 +21,17 @@ unsigned char sharp, distance, adc_reading;
 unsigned int value;
 float BATT_Voltage, BATT_V;
 
-//necessary variables for the Positioning
-volatile unsigned long int ShaftCountLeft = 0; //to keep track of left position encoder
-volatile unsigned long int ShaftCountRight = 0; //to keep track of right position encoder
-volatile unsigned int Degrees; //to accept angle in degrees for turning
+int delayTime;
+int stopped = 0;
+int runThisCode = 0;
+int timerCount = 0;
+int insideAlternatePath = 0;
+int exclusiveForLoopVariable = 0;
+int alternatePathDelaytTime = 0;
+int servoPositionCounter = 0;
+int servoPath = 10;
+int servoCounter1 = 0;
+int servoCounter2 = 0;
 
 //Function to configure the pins for motion
 void motion_pin_config (void){
@@ -52,16 +61,11 @@ void buzzer_pin_config (void){
 	PORTC = PORTC & 0xF7;		//Setting PORTC 3 logic low to turnoff buzzer
 }
 
-//Function to configure INT4 (PORTE 4) pin as input for the left position encoder
-void left_encoder_pin_config (void){
-	DDRE  = DDRE & 0xEF;  //Set the direction of the PORTE 4 pin as input
-	PORTE = PORTE | 0x10; //Enable internal pull-up for PORTE 4 pin
-}
-
-//Function to configure INT5 (PORTE 5) pin as input for the right position encoder
-void right_encoder_pin_config (void){
-	DDRE  = DDRE & 0xDF;  //Set the direction of the PORTE 4 pin as input
-	PORTE = PORTE | 0x20; //Enable internal pull-up for PORTE 4 pin
+//Configure PORTB 6 pin for servo motor 2 operation
+void servo2_pin_config (void)
+{
+	DDRB  = DDRB | 0x40;  //making PORTB 6 pin output
+	PORTB = PORTB | 0x40; //setting PORTB 6 pin to logic 1
 }
 
 //Function to initialize ports
@@ -70,8 +74,7 @@ void port_init(){
 	lcd_port_config();
 	adc_pin_config();
 	buzzer_pin_config();
-	left_encoder_pin_config(); //left encoder pin config
-	right_encoder_pin_config(); //right encoder pin config
+	servo2_pin_config(); //Configure PORTB 5 pin for servo motor 1 operation
 }
 
 //Function to Initialize ADC
@@ -83,32 +86,6 @@ void adc_init(){
 	ADCSRA = 0x86;		//ADEN=1 --- ADIE=1 --- ADPS2:0 = 1 1 0
 }
 
-void left_position_encoder_interrupt_init (void){ //Interrupt 4 enable
-	cli(); //Clears the global interrupt
-	EICRB = EICRB | 0x02; // INT4 is set to trigger with falling edge
-	EIMSK = EIMSK | 0x10; // Enable Interrupt INT4 for left position encoder
-	sei();   // Enables the global interrupt
-}
-
-void right_position_encoder_interrupt_init (void){ //Interrupt 5 enable
-	cli(); //Clears the global interrupt
-	EICRB = EICRB | 0x08; // INT5 is set to trigger with falling edge
-	EIMSK = EIMSK | 0x20; // Enable Interrupt INT5 for right position encoder
-	sei();   // Enables the global interrupt
-}
-
-//ISR for right position encoder
-ISR(INT5_vect)
-{
-	ShaftCountRight++;  //increment right shaft position count
-}
-
-
-//ISR for left position encoder
-ISR(INT4_vect)
-{
-	ShaftCountLeft++;  //increment left shaft position count
-}
 
 //Function used for setting motor's direction
 void motion_set (unsigned char Direction){
@@ -158,94 +135,23 @@ void stop (void){       //hard stop
 	motion_set(0x00);
 }
 
-//Function used for turning robot by specified degrees
-void angle_rotate(unsigned int Degrees){
-	float ReqdShaftCount = 0;
-	unsigned long int ReqdShaftCountInt = 0;
-
-	ReqdShaftCount = (float) Degrees/ 4.090; // division by resolution to get shaft count
-	ReqdShaftCountInt = (unsigned int) ReqdShaftCount;
-	ShaftCountRight = 0;
-	ShaftCountLeft = 0;
-
-	while (1)
-	{
-		if((ShaftCountRight >= ReqdShaftCountInt) | (ShaftCountLeft >= ReqdShaftCountInt))
-		break;
-	}
-	stop(); //Stop robot
+//Function to rotate Servo 2 by a specified angle in the multiples of 1.86 degrees
+void servo_2(unsigned char degrees)
+{
+	float PositionTiltServo = 0;
+	PositionTiltServo = ((float)degrees / 1.86) + 35.0;
+	OCR1BH = 0x00;
+	OCR1BL = (unsigned char) PositionTiltServo;
 }
 
-//Function used for moving robot forward by specified distance
-void linear_distance_mm(unsigned int DistanceInMM){
-	float ReqdShaftCount = 0;
-	unsigned long int ReqdShaftCountInt = 0;
+//servo_free functions unlocks the servo motors from the any angle
+//and make them free by giving 100% duty cycle at the PWM. This function can be used to
+//reduce the power consumption of the motor if it is holding load against the gravity.
 
-	ReqdShaftCount = DistanceInMM / 5.338; // division by resolution to get shaft count
-	ReqdShaftCountInt = (unsigned long int) ReqdShaftCount;
-	
-	ShaftCountRight = 0;
-	while(1)
-	{
-		if(ShaftCountRight > ReqdShaftCountInt)
-		{
-			break;
-		}
-	}
-	stop(); //Stop robot
-}
-
-void forward_mm(unsigned int DistanceInMM){
-	forward();
-	linear_distance_mm(DistanceInMM);
-}
-
-void back_mm(unsigned int DistanceInMM){
-	back();
-	linear_distance_mm(DistanceInMM);
-}
-
-void left_degrees(unsigned int Degrees){
-	// 88 pulses for 360 degrees rotation 4.090 degrees per count
-	left(); //Turn left
-	angle_rotate(Degrees);
-}
-
-
-
-void right_degrees(unsigned int Degrees){
-	// 88 pulses for 360 degrees rotation 4.090 degrees per count
-	right(); //Turn right
-	angle_rotate(Degrees);
-}
-
-
-void soft_left_degrees(unsigned int Degrees){
-	// 176 pulses for 360 degrees rotation 2.045 degrees per count
-	soft_left(); //Turn soft left
-	Degrees=Degrees*2;
-	angle_rotate(Degrees);
-}
-
-void soft_right_degrees(unsigned int Degrees){
-	// 176 pulses for 360 degrees rotation 2.045 degrees per count
-	soft_right();  //Turn soft right
-	Degrees=Degrees*2;
-	angle_rotate(Degrees);
-}
-
-void soft_left_2_degrees(unsigned int Degrees){
-	// 176 pulses for 360 degrees rotation 2.045 degrees per count
-	soft_left_2(); //Turn reverse soft left
-	Degrees=Degrees*2;
-	angle_rotate(Degrees);
-}
-
-void soft_right_2_degrees(unsigned int Degrees){
-	// 176 pulses for 360 degrees rotation 2.045 degrees per count
-	soft_right_2();  //Turn reverse soft right
-	Degrees=Degrees*2;
-	angle_rotate(Degrees);
+void servo_2_free (void) //makes servo 2 free rotating
+{
+	OCR1BH = 0x03;
+	OCR1BL = 0xFF; //Servo 2 off
 }
 
 //This Function accepts the Channel Number and returns the corresponding Analog Value 
@@ -290,8 +196,8 @@ unsigned int Sharp_GP2D12_estimation(unsigned char adc_reading){
 //LCD in this program will display the distance from the front SHARP sensor
 void updateLCD(){
 	sharp = ADC_Conversion(11);						//Stores the Analog value of front sharp connected to ADC channel 11 into variable "sharp"
-	value = Sharp_GP2D12_estimation(sharp);				//Stores Distance calsulated in a variable "value".
-	lcd_print(1,6,value,3);						//Prints Value Of Distanc in MM measured by Sharp Sensor.
+	value = Sharp_GP2D12_estimation(sharp);				//Stores Distance calculated in a variable "value".
+	lcd_print(1,6,value,3);						//Prints Value Of Distance in MM measured by Sharp Sensor.
 }
 
 //Function to switch on buzzer
@@ -331,6 +237,26 @@ void timer5_init(){
 	TCCR5B = 0x0B;	//WGM12=1; CS12=0, CS11=1, CS10=1 (Prescaler=64)
 }
 
+//TIMER1 initialization in 10 bit fast PWM mode  
+//prescale:256
+// WGM: 7) PWM 10bit fast, TOP=0x03FF
+// actual value: 52.25Hz 
+void timer1_init(void){
+ TCCR1B = 0x00; //stop
+ TCNT1H = 0xFC; //Counter high value to which OCR1xH value is to be compared with
+ TCNT1L = 0x01;	//Counter low value to which OCR1xH value is to be compared with
+ OCR1BH = 0x03;	//Output compare Register high value for servo 2
+ OCR1BL = 0xFF;	//Output Compare Register low Value For servo 2
+ ICR1H  = 0x03;	
+ ICR1L  = 0xFF;
+ TCCR1A = 0xAB; /*{COM1A1=1, COM1A0=0; COM1B1=1, COM1B0=0; COM1C1=1 COM1C0=0}
+ 					For Overriding normal port functionality to OCRnA outputs.
+				  {WGM11=1, WGM10=1} Along With WGM12 in TCCR1B for Selecting FAST PWM Mode*/
+ TCCR1C = 0x00;
+ TCCR1B = 0x0C; //WGM12=1; CS12=1, CS11=0, CS10=0 (Prescaler=256)
+}
+
+
 // Function for robot velocity control
 void velocity (unsigned char left_motor, unsigned char right_motor){
 	OCR5AL = (unsigned char)left_motor;
@@ -343,13 +269,15 @@ void init_devices (void){
 	port_init();
 	adc_init();
 	timer5_init();
+	timer1_init();
 	sei(); //Enables the global interrupts
 }
 
 //Function contains our alternate path which will be used in the case where obstacle is immovable
 //Note that this path is still in beta, therefore user caution is advised
 void addPath(){
-		
+	
+	
 	updateLCD();
 	
 	right();
@@ -360,7 +288,7 @@ void addPath(){
 	alternatePathDelaytTime = 2;
 	for(int i = 0; i < alternatePathDelaytTime*4; i++){
 		updateLCD();
-		runTheRobot(i, 1);
+		runTheRobot(i, 1, 1000);
 	}
 	updateLCD();
 	
@@ -372,7 +300,7 @@ void addPath(){
 	alternatePathDelaytTime = 2;
 	for(int i = 0; i < alternatePathDelaytTime*4; i++){
 		updateLCD();
-		runTheRobot(i, 1);
+		runTheRobot(i, 1, 1000);
 	}
 	updateLCD();
 	
@@ -384,7 +312,7 @@ void addPath(){
 	alternatePathDelaytTime = 2;
 	for(int i = 0; i < alternatePathDelaytTime*4; i++){
 		updateLCD();
-		runTheRobot(i, 1);
+		runTheRobot(i, 1, 1000);
 	}
 	updateLCD();
 	
@@ -394,9 +322,11 @@ void addPath(){
 	
 }
 
-void runTheRobot(int i, int insideAlternatePath){
+void runTheRobot(int i, int insideAlternatePath, int servoPositionCounter){
+
 	if(value <= 200 && value >=1){
 				stop();
+				servo_2_free();
 				stopped = 1;
 				i--;
 				//buzzer_on();
@@ -420,10 +350,44 @@ void runTheRobot(int i, int insideAlternatePath){
 				if(value > 200 || value == 0){
 					stopped = 0;
 					forward();
+					if(servoPositionCounter != 1000)
+						servo_2(servoPositionCounter);
+					//Experimental Section------------------------//
+					if(servoPositionCounter == 90){
+						if(servoCounter1 != 80){
+							servoPositionCounter = 90;
+							servo_2(servoPositionCounter);
+						}						
+						servoCounter1++;
+						if(servoCounter1 == 81){
+							servoCounter1 = 0;
+						}	
+					}
+					if(servoPositionCounter == 180){
+						if(servoCounter1 != 40){
+							servoPositionCounter = 180;
+							servo_2(servoPositionCounter);
+						}
+						servoCounter1++;
+						if(servoCounter1 == 41){
+							servoCounter1 = 0;
+						}
+					}
+					if(servoPositionCounter == 0){
+						if(servoCounter1 != 40){
+							servoPositionCounter = 0;
+							servo_2(servoPositionCounter);
+						}
+						servoCounter1++;
+						if(servoCounter1 == 41){
+							servoCounter1 = 0;
+						}
+					}
+					//---------------------------------------------//
 					timerCount = 0;
 					//buzzer_off();
 				}
-				_delay_ms(250);
+				_delay_ms(25);
 			}
 }
 
@@ -434,19 +398,29 @@ int main(){
 	init_devices();
 	lcd_set_4bit();
 	lcd_init();
+	
+	int checkServoPath = 1;
 		
 	while(1){//infinite while loop
-		
-		//velocity adjust as the robot on which i was working had some problems with left wheel
+
 		velocity(255,251);
 		
 		updateLCD();
 		
 		forward(); //both wheels forward
 		delayTime = 15;
-		for(int i = 0; i < delayTime*4; i++){
+		for(int i = 0; i < delayTime*40; i++){
 			updateLCD();
-			runTheRobot(i, 0);
+			runTheRobot(i, 0, servoPositionCounter);			
+			if(checkServoPath == 1){
+				servoPositionCounter++;
+				if(servoPositionCounter == 180)
+					checkServoPath = 0;
+			}else {
+				servoPositionCounter--;
+				if(servoPositionCounter == 0)
+					checkServoPath = 1;
+			}			
 		}
 		
 		right();
