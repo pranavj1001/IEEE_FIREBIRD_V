@@ -32,6 +32,11 @@ int servoPositionCounter = 0;
 int servoPath = 10;
 int servoCounter1 = 0;
 int servoCounter2 = 0;
+int takePause = 0;
+int curPosition = 0;
+int prevPosition = 0;
+int initial = 0;
+int delayFactor;
 
 //Function to configure the pins for motion
 void motion_pin_config (void){
@@ -273,6 +278,99 @@ void init_devices (void){
 	sei(); //Enables the global interrupts
 }
 
+//Function is called when the bot detects an obstacle
+//Function moves the head of the bot from left 45 to right 45
+/*void servoStopAction(){
+	
+	//Below commented code is good but it produces a lot of jerks which are unwanted.
+	//However, watching the servo motor be in this motion is pretty cool
+	//But with a body on top of servo Motor I dont recommend the folllowing code 
+	if(servoCounter2 == 2){
+		servoCounter2 = 0;
+		if(initial == 0){
+			servo_2(45);
+			curPosition = 1;
+			initial = 1;
+		}else if(prevPosition == 0 && curPosition == 1){
+			curPosition = 2;
+			prevPosition = 1;
+			servo_2(90); 
+		}else if(prevPosition == 1 && curPosition == 2){
+			curPosition = 3;
+			prevPosition = 2;
+			servo_2(135);
+		}else if(prevPosition == 2 && curPosition == 3){
+			curPosition = 2;
+			prevPosition = 3;
+			servo_2(90);
+		}else if(prevPosition == 3 && curPosition == 2){
+			curPosition = 1;
+			prevPosition = 2;
+			servo_2(45);
+		}else if(prevPosition == 2 && curPosition == 1){
+			curPosition = 2;
+			prevPosition = 1;
+			servo_2(90);
+		}
+	}else{
+		servoCounter2++;
+	}
+	
+	int beInThisLoop = 1;
+	int timer = 0;
+	
+	while(beInThisLoop){
+		
+		int i;
+		
+		updateLCD();
+		
+		if(beInThisLoop){
+			for (i = 45; i < 136; i++){
+				updateLCD();	
+				if(value > 200 || value  == 0){
+					beInThisLoop = 0;
+					i = 135;
+				}
+				timer++;
+				if(timer > 67){
+					beInThisLoop = 0;
+					addPath();
+					runThisCode = 0;
+					delayTime -= 2;
+					timer = 0; 
+				}
+				if(beInThisLoop)
+					servo_2(i);
+				_delay_ms(30);
+			}
+		}		
+		
+		if(beInThisLoop){
+			updateLCD();
+			for (i = 135; i > 44; i--){
+				if(value > 200 || value  == 0){
+					beInThisLoop = 0;
+					i = 45;
+				}
+				timer++;
+				if(timer > 67){
+					beInThisLoop = 0;
+					addPath();
+					runThisCode = 0;
+					delayTime -= 2;
+					timer = 0;
+				}
+				if(beInThisLoop)
+					servo_2(i);
+				_delay_ms(30);
+			}
+		}		
+		
+	}
+	
+}*/
+
 //Function contains our alternate path which will be used in the case where obstacle is immovable
 //Note that this path is still in beta, therefore user caution is advised
 void addPath(){
@@ -286,7 +384,7 @@ void addPath(){
 	
 	forward();
 	alternatePathDelaytTime = 2;
-	for(int i = 0; i < alternatePathDelaytTime*4; i++){
+	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
 	}
@@ -298,7 +396,7 @@ void addPath(){
 	
 	forward();
 	alternatePathDelaytTime = 2;
-	for(int i = 0; i < alternatePathDelaytTime*4; i++){
+	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
 	}
@@ -310,7 +408,7 @@ void addPath(){
 	
 	forward();
 	alternatePathDelaytTime = 2;
-	for(int i = 0; i < alternatePathDelaytTime*4; i++){
+	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
 	}
@@ -342,48 +440,52 @@ void runTheRobot(int i, int insideAlternatePath, int servoPositionCounter){
 						if(timerCount > 16){
 							addPath();
 							delayTime -= 2;
-							runThisCode = 0;		
+							runThisCode = 0;
 						}
-					}										
+					}
+					if(insideAlternatePath){
+						servo_2(90);
+					}									
 				}
 			}else if(stopped || value > 200 || value == 0){
 				if(value > 200 || value == 0){
 					stopped = 0;
 					forward();
-					if(servoPositionCounter != 1000)
+					if((servoPositionCounter != 1000) && (!takePause))
 						servo_2(servoPositionCounter);
-					//Experimental Section------------------------//
-					if(servoPositionCounter == 90){
+					/*if(servoPositionCounter == 90){
+						takePause = 1;
 						if(servoCounter1 != 80){
-							servoPositionCounter = 90;
-							servo_2(servoPositionCounter);
+							servo_2(90);
+							servoCounter1++;
 						}						
-						servoCounter1++;
 						if(servoCounter1 == 81){
 							servoCounter1 = 0;
+							takePause = 0;
 						}	
 					}
 					if(servoPositionCounter == 180){
+						takePause = 1;
 						if(servoCounter1 != 40){
-							servoPositionCounter = 180;
-							servo_2(servoPositionCounter);
+							servo_2(180);
+							servoCounter1++;
 						}
-						servoCounter1++;
 						if(servoCounter1 == 41){
 							servoCounter1 = 0;
+							takePause = 0;
 						}
 					}
 					if(servoPositionCounter == 0){
+						takePause = 1;
 						if(servoCounter1 != 40){
-							servoPositionCounter = 0;
-							servo_2(servoPositionCounter);
+							servo_2(0);
+							servoCounter1++;
 						}
-						servoCounter1++;
 						if(servoCounter1 == 41){
 							servoCounter1 = 0;
+							takePause = 0;
 						}
-					}
-					//---------------------------------------------//
+					}*/
 					timerCount = 0;
 					//buzzer_off();
 				}
@@ -409,15 +511,18 @@ int main(){
 		
 		forward(); //both wheels forward
 		delayTime = 15;
-		for(int i = 0; i < delayTime*40; i++){
+		delayFactor = 40;
+		for(int i = 0; i < delayTime*delayFactor; i++){
 			updateLCD();
 			runTheRobot(i, 0, servoPositionCounter);			
 			if(checkServoPath == 1){
-				servoPositionCounter++;
+				if(!takePause)
+					servoPositionCounter++;
 				if(servoPositionCounter == 180)
 					checkServoPath = 0;
 			}else {
-				servoPositionCounter--;
+				if(!takePause)
+					servoPositionCounter--;
 				if(servoPositionCounter == 0)
 					checkServoPath = 1;
 			}			
