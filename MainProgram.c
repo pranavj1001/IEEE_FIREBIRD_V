@@ -280,6 +280,7 @@ void init_devices (void){
 
 //Function is called when the bot detects an obstacle
 //Function moves the head of the bot from left 45 to right 45
+//Experimental Function
 /*void servoStopAction(){
 	
 	//Below commented code is good but it produces a lot of jerks which are unwanted.
@@ -378,50 +379,55 @@ void addPath(){
 	
 	updateLCD();
 	
-	right();
-	_delay_ms(630);
+	soft_right();
+	_delay_ms(1500);
 	updateLCD();
 	
 	forward();
-	alternatePathDelaytTime = 2;
+	alternatePathDelaytTime = 3;
 	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
 	}
 	updateLCD();
 	
-	left();
-	_delay_ms(630);
+	soft_left();
+	_delay_ms(1500);
 	updateLCD();
 	
 	forward();
-	alternatePathDelaytTime = 2;
+	alternatePathDelaytTime = 3;
 	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
 	}
 	updateLCD();
 	
-	left();
-	_delay_ms(630);
+	soft_left();
+	_delay_ms(1500);
 	updateLCD();
 	
 	forward();
-	alternatePathDelaytTime = 2;
+	alternatePathDelaytTime = 3;
 	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
 	}
 	updateLCD();
 	
-	right();
-	_delay_ms(630);
+	soft_right();
+	_delay_ms(1500);
 	updateLCD();
 	
 }
 
 void runTheRobot(int i, int insideAlternatePath, int servoPositionCounter){
-
+	
+	//Code to slow down the robot
+	/*if(value < 300){
+		velocity(150, 148);
+	}*/
+	
 	if(value <= 200 && value >=1){
 				stop();
 				servo_2_free();
@@ -448,11 +454,13 @@ void runTheRobot(int i, int insideAlternatePath, int servoPositionCounter){
 					}									
 				}
 			}else if(stopped || value > 200 || value == 0){
+				//velocity(255, 253);
 				if(value > 200 || value == 0){
 					stopped = 0;
 					forward();
 					if((servoPositionCounter != 1000) && (!takePause))
 						servo_2(servoPositionCounter);
+					//Experimental Code
 					/*if(servoPositionCounter == 90){
 						takePause = 1;
 						if(servoCounter1 != 80){
@@ -505,12 +513,12 @@ int main(){
 		
 	while(1){//infinite while loop
 
-		velocity(255,251);
+		velocity(255,253);
 		
 		updateLCD();
 		
 		forward(); //both wheels forward
-		delayTime = 15;
+		delayTime = 10;
 		delayFactor = 40;
 		for(int i = 0; i < delayTime*delayFactor; i++){
 			updateLCD();
@@ -528,8 +536,8 @@ int main(){
 			}			
 		}
 		
-		right();
-		_delay_ms(630);
+		soft_right();
+		_delay_ms(1500);
 		
 		/*delayTime = 4;
 		for(int i = 0; i < delayTime*4; i++){
