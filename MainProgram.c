@@ -6,6 +6,14 @@
  */ 
 
 
+/*
+ * Botv1.c
+ *
+ * Created: 2/13/2017 11:48:14 AM
+ *  Author: Pranav Jain
+ */ 
+
+
 #define F_CPU 14745600
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -37,6 +45,7 @@ int curPosition = 0;
 int prevPosition = 0;
 int initial = 0;
 int delayFactor;
+int buzzerCheck = 0;
 
 //Function to configure the pins for motion
 void motion_pin_config (void){
@@ -280,7 +289,6 @@ void init_devices (void){
 
 //Function is called when the bot detects an obstacle
 //Function moves the head of the bot from left 45 to right 45
-//Experimental Function
 /*void servoStopAction(){
 	
 	//Below commented code is good but it produces a lot of jerks which are unwanted.
@@ -376,15 +384,16 @@ void init_devices (void){
 //Note that this path is still in beta, therefore user caution is advised
 void addPath(){
 	
+	//buzzer_off();
 	
 	updateLCD();
 	
 	soft_right();
-	_delay_ms(1500);
+	_delay_ms(1700);
 	updateLCD();
 	
 	forward();
-	alternatePathDelaytTime = 3;
+	alternatePathDelaytTime = 2;
 	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
@@ -392,11 +401,11 @@ void addPath(){
 	updateLCD();
 	
 	soft_left();
-	_delay_ms(1500);
+	_delay_ms(1700);
 	updateLCD();
 	
 	forward();
-	alternatePathDelaytTime = 3;
+	alternatePathDelaytTime = 2;
 	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
@@ -404,11 +413,11 @@ void addPath(){
 	updateLCD();
 	
 	soft_left();
-	_delay_ms(1500);
+	_delay_ms(1700);
 	updateLCD();
 	
 	forward();
-	alternatePathDelaytTime = 3;
+	alternatePathDelaytTime = 2;
 	for(int i = 0; i < alternatePathDelaytTime*delayFactor; i++){
 		updateLCD();
 		runTheRobot(i, 1, 1000);
@@ -416,19 +425,14 @@ void addPath(){
 	updateLCD();
 	
 	soft_right();
-	_delay_ms(1500);
+	_delay_ms(1700);
 	updateLCD();
 	
 }
 
 void runTheRobot(int i, int insideAlternatePath, int servoPositionCounter){
 	
-	//Code to slow down the robot
-	/*if(value < 300){
-		velocity(150, 148);
-	}*/
-	
-	if(value <= 200 && value >=1){
+	if(value <= 500 && value >=1){
 				stop();
 				servo_2_free();
 				stopped = 1;
@@ -436,15 +440,25 @@ void runTheRobot(int i, int insideAlternatePath, int servoPositionCounter){
 				//buzzer_on();
 				runThisCode = 1;
 				while(runThisCode){
+					if(buzzerCheck){
+						buzzer_off();
+						buzzerCheck = 0;
+					}else{
+						buzzer_on();
+						buzzerCheck = 1;
+					}
 					updateLCD();
-					if(value > 200){
+					if(value > 500){
 						runThisCode = 0;
 					}
 					_delay_ms(250);
 					if(!insideAlternatePath){
 						timerCount++;
 						if(timerCount > 16){
-							addPath();
+							//addPath();
+							buzzer_off();
+							soft_right();
+							_delay_ms(1700);
 							delayTime -= 2;
 							runThisCode = 0;
 						}
@@ -453,14 +467,14 @@ void runTheRobot(int i, int insideAlternatePath, int servoPositionCounter){
 						servo_2(90);
 					}									
 				}
-			}else if(stopped || value > 200 || value == 0){
+			}else if(stopped || value > 600 || value == 0){
+				buzzer_off();
 				//velocity(255, 253);
-				if(value > 200 || value == 0){
+				if(value > 600 || value == 0){
 					stopped = 0;
 					forward();
 					if((servoPositionCounter != 1000) && (!takePause))
 						servo_2(servoPositionCounter);
-					//Experimental Code
 					/*if(servoPositionCounter == 90){
 						takePause = 1;
 						if(servoCounter1 != 80){
@@ -513,12 +527,12 @@ int main(){
 		
 	while(1){//infinite while loop
 
-		velocity(255,253);
+		velocity(255, 247);
 		
 		updateLCD();
 		
 		forward(); //both wheels forward
-		delayTime = 10;
+		delayTime = 20;
 		delayFactor = 40;
 		for(int i = 0; i < delayTime*delayFactor; i++){
 			updateLCD();
@@ -537,9 +551,28 @@ int main(){
 		}
 		
 		soft_right();
-		_delay_ms(1500);
+		_delay_ms(1700);
 		
-		/*delayTime = 4;
+		/*forward(); //both wheels forward
+		delayTime = 5;
+		delayFactor = 40;
+		for(int i = 0; i < delayTime*delayFactor; i++){
+			updateLCD();
+			runTheRobot(i, 0, servoPositionCounter);
+			if(checkServoPath == 1){
+				if(!takePause)
+				servoPositionCounter++;
+				if(servoPositionCounter == 180)
+				checkServoPath = 0;
+			}else {
+				if(!takePause)
+				servoPositionCounter--;
+				if(servoPositionCounter == 0)
+				checkServoPath = 1;
+			}
+		}
+		
+		delayTime = 4;
 		for(int i = 0; i < delayTime*4; i++){
 			updateLCD();
 			runTheRobot(i);
